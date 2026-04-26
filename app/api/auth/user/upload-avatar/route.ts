@@ -8,22 +8,30 @@ async function uploadToCloudinary(
   cloudName: string,
   uploadPreset: string,
 ): Promise<string> {
+  // Sanitize ALL upload fields: replace / and \ with -, remove special chars
+  const sanitize = (str: string) => 
+    (str || '').replace(/[/\\]/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+
+  const safeFolder = sanitize(folder) || 'avatars';
+
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const rawName = file.name.replace(/\.[^/.]+$/, "");
   
-  const sanitized = rawName
-    .replace(/[/\\]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/[^a-zA-Z0-9-]/g, "")
-    .toLowerCase();
-    
-  const safeName = `${sanitized || 'avatar'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const display_name = sanitize(rawName) || 'user-avatar';
+  const public_id = `avatar-${Date.now()}`;
+
+  console.log('[Cloudinary Avatar Upload]:', {
+    fileName: file.name,
+    display_name,
+    public_id,
+    folder: safeFolder
+  });
 
   const formData = new FormData();
-  formData.append('file', file, `${safeName}.${ext}`);
+  formData.append('file', file, `${display_name}.${ext}`);
   formData.append('upload_preset', uploadPreset);
-  formData.append('folder', folder);
-  formData.append('public_id', safeName);
+  formData.append('folder', safeFolder);
+  formData.append('public_id', public_id);
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
@@ -64,7 +72,7 @@ export async function POST(req: NextRequest) {
     let url = '';
 
     if (cloudName && uploadPreset) {
-      url = await uploadToCloudinary(file, 'cold-dog/avatars', cloudName, uploadPreset);
+      url = await uploadToCloudinary(file, 'avatars', cloudName, uploadPreset);
     } else if (process.env.NODE_ENV === 'development') {
       const { writeFile, mkdir } = await import('fs/promises');
       const path = await import('path');
