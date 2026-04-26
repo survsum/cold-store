@@ -19,10 +19,19 @@ async function uploadToCloudinary(
   const base64 = Buffer.from(bytes).toString('base64');
   const dataURI = `data:${file.type || 'image/jpeg'};base64,${base64}`;
 
+  // Clean name without slashes
+  const cleanName = (file.name || 'product-image')
+    .replace(/\.[^/.]+$/, "") 
+    .replace(/[^a-zA-Z0-9_-]/g, "-");
+
+  const publicId = `prod-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
   const body = new URLSearchParams();
   body.append('file',           dataURI);
   body.append('upload_preset',  uploadPreset);
   body.append('folder',         folder);
+  body.append('public_id',      publicId);
+  body.append('display_name',   cleanName);
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
@@ -74,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     // ── Production: Cloudinary ────────────────────────────────────────────────
     if (cloudName && uploadPreset) {
-      const url = await uploadToCloudinary(file, 'colddog-products', cloudName, uploadPreset);
+      const url = await uploadToCloudinary(file, 'cold-dog/products', cloudName, uploadPreset);
       return NextResponse.json({ url });
     }
 
