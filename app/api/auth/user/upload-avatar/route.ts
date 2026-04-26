@@ -8,21 +8,28 @@ async function uploadToCloudinary(
   cloudName: string,
   uploadPreset: string,
 ): Promise<string> {
-  const bytes  = await file.arrayBuffer();
-  const base64 = Buffer.from(bytes).toString('base64');
-  const dataURI = `data:${file.type || 'image/jpeg'};base64,${base64}`;
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const rawName = file.name.replace(/\.[^/.]+$/, "");
+  
+  const sanitized = rawName
+    .replace(/[/\\]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9-]/g, "")
+    .toLowerCase();
+    
+  const safeName = `${sanitized || 'avatar'}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-  const body = new URLSearchParams();
-  body.append('file',          dataURI);
-  body.append('upload_preset', uploadPreset);
-  body.append('folder',        folder);
+  const formData = new FormData();
+  formData.append('file', file, `${safeName}.${ext}`);
+  formData.append('upload_preset', uploadPreset);
+  formData.append('folder', folder);
+  formData.append('public_id', safeName);
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
     {
       method:  'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body:    body.toString(),
+      body:    formData,
     }
   );
 
